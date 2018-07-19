@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 MIN_MATCH_COUNT = 4
 MAX_IMG_COUNT = 5
 MAP_RANGE = 500
-SEARCH_RANGE = 8
+SEARCH_RANGE = 5
 MAX_MISS = 1.2
 
 class Slam(object):
@@ -39,27 +39,38 @@ class Slam(object):
     def get_Big_Map(self):
         return self.Big_Map
 
+    def rgb2gray(self,rgb):
+        return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
+
+
     def clear_img(self,img):
         
+        # print(np.size(np.shape(img)))
+        if np.size(np.shape(img)) == 3:
+            # pass
+            img = self.rgb2gray(img)
+
         ret,thresh1 = cv2.threshold(img,25,100,cv2.THRESH_BINARY)
         return thresh1
 
     def no_T_Slam(self,img):
+        img = mySlam.clear_img(img)
         if self.flag == 0:
-            rows, cols = np.where(img[:,:] !=0)
-            min_row, max_row = min(rows), max(rows) +1
-            min_col, max_col = min(cols), max(cols) +1
-            result = img[min_row:max_row,min_col:max_col]
+            # rows, cols = np.where(img[:,:] !=0)
+            # min_row, max_row = min(rows), max(rows) +1
+            # min_col, max_col = min(cols), max(cols) +1
+            # result = img[min_row:max_row,min_col:max_col]
+            result = img
             self.result = result;
             self.flag = 1
             self.pre = result.sum()
             return result
 
-        rows, cols = np.where(img[:,:] !=0)
-        min_row, max_row = min(rows), max(rows) +1
-        min_col, max_col = min(cols), max(cols) +1
-        img2 = img[min_row:max_row,min_col:max_col]
-       
+        # rows, cols = np.where(img[:,:] !=0)
+        # min_row, max_row = min(rows), max(rows) +1
+        # min_col, max_col = min(cols), max(cols) +1
+        # img2 = img[min_row:max_row,min_col:max_col]
+        img2 = img
 
         temp_sum = img2.sum()
 
@@ -135,7 +146,15 @@ class Slam(object):
         cv2.waitKey(0)
 
         self.best.append(best_vector)
+
         self.resent_result = temp_new_img
+
+        # if temp_new_img.sum()/(self.result.sum()+50) > MAX_MISS:
+        #     print("error:temp bad match")
+        #     self.resent_result = self.result
+        #     return temp_new_img
+
+        
         self.V = best_vector
 
 
@@ -213,15 +232,13 @@ class Slam(object):
 
 # demo --------
 
-# mySlam = Slam()
+mySlam = Slam()
 
-# for x in range(1,37):
-#     if x!=6:
-#         a = cv2.imread('1/'+str(x)+'.jpg',0)
-
-#         c = mySlam.clear_img(a)
-#         print(x)
-#         result = mySlam.no_T_Slam(c)
+for x in range(1,53):
+    if x!=6:
+        a = cv2.imread('1/'+str(x)+'.jpg')
+        print(x)
+        result = mySlam.no_T_Slam(a)
 
 
 
