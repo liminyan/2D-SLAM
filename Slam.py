@@ -12,7 +12,7 @@ MAP_RANGE = 500
 SEARCH_RANGE = 8
 MAX_MISS = 1.2
 PLANE_SIZE = 1
-MERGE_RAT = 0.0
+MERGE_RAT = 0.6
 
 
 
@@ -118,15 +118,6 @@ class Slam(object):
         flag_bad = 0
 
         merge = random.randint(0,10)/10.0
-        
-        print(merge)
-        if (temp_sum/(self.pre+50) > MAX_MISS) or (merge < MERGE_RAT):
-            # if merge < MERGE_RAT:
-            #     print("rand:no merge")
-            # else:
-            #     print("error: bad match")
-            self.result = self.resent_result
-            flag_bad = 1
 
         self.pre = temp_sum
         best_vector = np.array([0,0])
@@ -150,10 +141,10 @@ class Slam(object):
                 part_result =  np.zeros(img2.shape - np.array([p_min_x,p_min_y]))
                 part_result[0-p_min_x:max_x-min_x-p_min_x,0-p_min_y:max_y-min_y-p_min_y] = self.result[min_x:max_x,min_y:max_y]
                 C = (np.fabs(img2 - part_result[0:img2.shape[0],0:img2.shape[1]]))
-                count = part_result.sum() + img2.sum()
+                count = part_result[0:img2.shape[0],0:img2.shape[1]].sum() + img2.sum()
 
                 temp_match_value = (count - C.sum())
-               
+                
                 if temp_match_value > match_value:
         
                     match_value = temp_match_value
@@ -170,7 +161,7 @@ class Slam(object):
                             best_px = p_min_x;
                             best_py = p_min_y;
 
-        print("best_vector",best_vector)
+        print("best_vector",best_vector,"best value",match_value/50)
         max_x = max(self.result.shape[0],best_vector[0]+img2.shape[0])
         max_y = max(self.result.shape[1],best_vector[1]+img2.shape[1]) 
         temp_new_img = np.zeros([max_x,max_y]-np.array([best_px,best_py]))
@@ -187,21 +178,30 @@ class Slam(object):
         pos_x = lenx_pos + best_vector[0]-best_px
         pos_y = leny_pos + best_vector[1]-best_py    
 
+
+
+        print(match_value/2/img2.sum())
         
-        if( flag_bad == 0):
+        match_rate = match_value/2/img2.sum()
+
+
+
+        if  (match_rate > 0.5 ) and (merge < MERGE_RAT):
             
             self.best.append(best_vector)
             self.resent_result = temp_new_img
             self.V = best_vector 
-            self.temptarget =  self.target + np.array([-best_px,-best_py])
             self.pos = np.array([best_px,best_py])
+            self.temptarget =  self.target - self.pos
+            
             self.show_plane_pos(lenx_pos,leny_pos,pos_x,pos_y)
 
         else:
-
+            # self.result = self.resent_result
             self.first_pos = self.first_pos - self.pos
             self.V = best_vector  - self.pos
-            self.target -= self.pos
+            self.target = self.temptarget 
+            self.result = self.resent_result
             
         return temp_new_img
 
@@ -210,11 +210,11 @@ class Slam(object):
 frames = []  
 mySlam = Slam()
 result = None
-for x in range(1,60):
+for x in range(70,88):
     if x!=6:
         a = cv2.imread('1/'+str(x)+'.jpg',0)
         print(x)
-        a = cv2.resize(a,(int(a.shape[1]/2),int(a.shape[0]/2)))
+        # a = cv2.resize(a,(int(a.shape[1]/2),int(a.shape[0]/2)))
         # a = a[::-1]
         result = mySlam.no_T_Slam(a)
         frames.append(result)
