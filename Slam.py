@@ -1,53 +1,91 @@
-1# -*- coding: utf-8 -*-    
+# -*- coding: utf-8 -*-    
 import cv2    
 import numpy as np    
 from matplotlib import pyplot as plt
+import imageio
+import random
+from PIL import Image
 
 MIN_MATCH_COUNT = 4
 MAX_IMG_COUNT = 5
 MAP_RANGE = 500
-SEARCH_RANGE = 5
+SEARCH_RANGE = 8
 MAX_MISS = 1.2
+PLANE_SIZE = 1
+MERGE_RAT = 0.0
+
+
+
+def point(event,x,y,flags,param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        print("fuck",x,y)
+
+cv2.namedWindow('image')        
+cv2.setMouseCallback('image', point)
 
 class Slam(object):
-    """docstring for Slam"""
+    """  docstring for Slam """
     def __init__(self):
         super(Slam).__init__()
 
-        self.Big_Map = np.zeros((MAP_RANGE*2,MAP_RANGE*2))
         self.V = np.array([0,0])
+        self.V_based_first = np.array([0,0])
         self.result = None
         self.flag = 0;
         self.best = []
         self.pre = None
         self.resent_result = None
+        self.pos = np.array([0,0])
+        self.first_pos = np.array([0,0])
+        self.target = np.array([0,0])
+        self.temptarget = np.array([0,0])
+        self.trace = None
+        self.trace_flag = 0;
+        self.temp = None
+        self.temp_pos = np.array([0,0])
 
-    def Low_B_Slam(self,v,img):
 
-        img_V = self.v+V
+    def show_plane_pos(self,pos_x,pos_y,r_x,r_y):
+      
+        self.temp = np.zeros([self.resent_result.shape[0],self.resent_result.shape[1],3])
+        self.temp_pos = np.array([r_x,r_y])
+        for x in range(-PLANE_SIZE,1+PLANE_SIZE):
+            for y in range(-PLANE_SIZE,1+PLANE_SIZE):
+                
+                self.temp[x+r_x][y+r_y][2] = 255
 
-        L_x = -img.shape[0] + img_V[0]
+        for x in range(-PLANE_SIZE,1+PLANE_SIZE):
+            for y in range(-PLANE_SIZE,1+PLANE_SIZE):
 
-        L_y = -img.shape[1] + img_V[1]
+                self.temp[x+self.temptarget[0]][y+self.temptarget[1]][1] = 255
 
-        for x in range(1,img.shape[0]):
-                for y in range(1,img.shape[1]):
+       
+        for x in range(0,self.resent_result.shape[0]):
+            for y in range(0,self.resent_result.shape[1]):
 
-                    if ((sum (img[x][y]) != 255*3) and  (sum(img[x][y]) != 0 )):
-                        self.Big_Map[x+L_x][y+L_y] = img1[x][y]
+                self.temp[x][y][0] = max(self.temp[x][y][0],self.resent_result[x][y])
+                self.temp[x][y][1] = max(self.temp[x][y][1],self.resent_result[x][y])
+                self.temp[x][y][2] = max(self.temp[x][y][2],self.resent_result[x][y])
 
-    def get_Big_Map(self):
-        return self.Big_Map
+
+        cv2.imshow( "image", self.temp )  
+
+
+
+        cv2.waitKey(0)
+        # del self.temp
 
     def rgb2gray(self,rgb):
+
         return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
 
+    def set_target(self,tx,ty):
+
+        self.target = np.array([tx,ty])
 
     def clear_img(self,img):
         
-        # print(np.size(np.shape(img)))
         if np.size(np.shape(img)) == 3:
-            # pass
             img = self.rgb2gray(img)
 
         ret,thresh1 = cv2.threshold(img,25,100,cv2.THRESH_BINARY)
@@ -56,12 +94,15 @@ class Slam(object):
     def no_T_Slam(self,img):
         img = mySlam.clear_img(img)
         if self.flag == 0:
+
             # rows, cols = np.where(img[:,:] !=0)
             # min_row, max_row = min(rows), max(rows) +1
             # min_col, max_col = min(cols), max(cols) +1
-            # result = img[min_row:max_row,min_col:max_col]
+            # result = img[min_row:max_row,min_col:max_col] 
+            
             result = img
             self.result = result;
+            self.resent_result = result
             self.flag = 1
             self.pre = result.sum()
             return result
@@ -70,14 +111,22 @@ class Slam(object):
         # min_row, max_row = min(rows), max(rows) +1
         # min_col, max_col = min(cols), max(cols) +1
         # img2 = img[min_row:max_row,min_col:max_col]
+        
         img2 = img
 
         temp_sum = img2.sum()
+        flag_bad = 0
 
-        if temp_sum/(self.pre+50) > MAX_MISS:
-            print("error: bad match")
+        merge = random.randint(0,10)/10.0
+        
+        print(merge)
+        if (temp_sum/(self.pre+50) > MAX_MISS) or (merge < MERGE_RAT):
+            # if merge < MERGE_RAT:
+            #     print("rand:no merge")
+            # else:
+            #     print("error: bad match")
             self.result = self.resent_result
-            # return self.result
+            flag_bad = 1
 
         self.pre = temp_sum
         best_vector = np.array([0,0])
@@ -89,27 +138,17 @@ class Slam(object):
         for rx in range(-SEARCH_RANGE,SEARCH_RANGE+1):
             for ry in range(-SEARCH_RANGE,SEARCH_RANGE+1):
 
-
                 v1 = np.array([rx,ry]) + self.V
-              
                 max_x =  min(img2.shape[0],self.result.shape[0]-v1[0],self.result.shape[0]) 
                 max_y =  min(img2.shape[1],self.result.shape[1]-v1[1],self.result.shape[1]) 
-
                 min_x = max(0,v1[0])
                 min_y = max(0,v1[1])
 
-                # print(v1)
                 p_min_x = min(0,v1[0])
                 p_min_y = min(0,v1[1])
 
-
                 part_result =  np.zeros(img2.shape - np.array([p_min_x,p_min_y]))
-                
                 part_result[0-p_min_x:max_x-min_x-p_min_x,0-p_min_y:max_y-min_y-p_min_y] = self.result[min_x:max_x,min_y:max_y]
-
-               
-
-                
                 C = (np.fabs(img2 - part_result[0:img2.shape[0],0:img2.shape[1]]))
                 count = part_result.sum() + img2.sum()
 
@@ -141,107 +180,52 @@ class Slam(object):
                 for y in range(1,img2.shape[1]):
                     if ( (img2[x][y]) != 0):
                         temp_new_img[x+best_vector[0]-best_px][y+best_vector[1]-best_py] = 255
-                   
-        cv2.imshow( "result", temp_new_img)       
-        cv2.waitKey(0)
 
-        self.best.append(best_vector)
-
-        self.resent_result = temp_new_img
-
-        # if temp_new_img.sum()/(self.result.sum()+50) > MAX_MISS:
-        #     print("error:temp bad match")
-        #     self.resent_result = self.result
-        #     return temp_new_img
+        #概率合并   
+        lenx_pos = int(img2.shape[0]/2)
+        leny_pos = int(img2.shape[1]/2)   
+        pos_x = lenx_pos + best_vector[0]-best_px
+        pos_y = leny_pos + best_vector[1]-best_py    
 
         
-        self.V = best_vector
+        if( flag_bad == 0):
+            
+            self.best.append(best_vector)
+            self.resent_result = temp_new_img
+            self.V = best_vector 
+            self.temptarget =  self.target + np.array([-best_px,-best_py])
+            self.pos = np.array([best_px,best_py])
+            self.show_plane_pos(lenx_pos,leny_pos,pos_x,pos_y)
 
-
-        return temp_new_img
-
-    def GetGoodMatch(self,img1,img2 ):
-
-        sift = cv2.xfeatures2d.SIFT_create()
-        self.kp1, des1 = sift.detectAndCompute(img2,None)
-        self.kp2, des2 = sift.detectAndCompute(img1,None)
-     
-        FLANN_INDEX_KDTREE = 0    
-        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)    
-        search_params = dict(checks = 50)   # or pass empty dictionary 
-
-        flann = cv2.FlannBasedMatcher(index_params, search_params)
-
-        matches = flann.knnMatch(des1,des2,k=2)
-       
-        good = []    
-        for m,n in matches:
-            if m.distance < 0.7*n.distance:
-                good.append(m)
-
-        imgMatches = None    
-        imgMatches = cv2.drawMatches( img1, self.kp1, img2, self.kp2, good, imgMatches )    
-        cv2.imshow( "good_matches", imgMatches )    
-        cv2.imwrite( "./data/good_matches.png", imgMatches )    
-        cv2.waitKey(0)
-        return good
-
-
-
-    def Slam2D(self,img2):  
-        
-        if self.flag == 0:
-            self.result = img2
-            self.flag = 1
-            return img2
-
-
-        good = self.GetGoodMatch(self.result,img2)
-        print("good match",len(good))
-        if len(good)>=MIN_MATCH_COUNT:
-
-            src_pts = np.float32([ self.kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
-            dst_pts = np.float32([ self.kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
-
-            H, mask = cv2.findHomography(src_pts, dst_pts, cv2.LMEDS,5.0)
-            wrap = cv2.warpPerspective(img2, H, (self.result.shape[1]+img2.shape[1] , self.result.shape[0]+img2.shape[0]))
-
-            for x in range(1,self.result.shape[0]):
-                for y in range(1,self.result.shape[1]):
-                    if ( (self.result[x][y]) != 0):
-                        wrap[x][y] = self.result[x][y]
-                   
-            rows, cols = np.where(wrap[:,:] !=0)
-            min_row, max_row = min(rows), max(rows) +1
-            min_col, max_col = min(cols), max(cols) +1
-            result = wrap[min_row:max_row,min_col:max_col]#去除黑色无用部分
-
-
-            cv2.imshow('result.jpg',result)
-            cv2.waitKey(0)
-
-            self.result = result
-            return result;   
         else:
-            print("error:bad match!")
-            return self.result
 
-    def Slam3D():
-        pass
-
+            self.first_pos = self.first_pos - self.pos
+            self.V = best_vector  - self.pos
+            self.target -= self.pos
+            
+        return temp_new_img
 
 # demo --------
 
+frames = []  
 mySlam = Slam()
-
-for x in range(1,53):
+result = None
+for x in range(1,60):
     if x!=6:
-        a = cv2.imread('1/'+str(x)+'.jpg')
+        a = cv2.imread('1/'+str(x)+'.jpg',0)
         print(x)
+        a = cv2.resize(a,(int(a.shape[1]/2),int(a.shape[0]/2)))
+        # a = a[::-1]
         result = mySlam.no_T_Slam(a)
+        frames.append(result)
+    else:
+        mySlam.set_target(20,20)
 
 
-
+cv2.imwrite('result.png',mySlam.result)
+print("temp_pos",mySlam.temp_pos)
+print("target",mySlam.target)
+# imageio.mimsave('demo.gif', frames, 'GIF', duration = 0.25)  
 
 
 
