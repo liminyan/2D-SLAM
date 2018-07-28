@@ -31,7 +31,7 @@ class Slam(object):
         self.V = np.array([0,0])
         self.V_based_first = np.array([0,0])
         self.result = None
-        self.flag = 0;
+        self.flag = 0
         self.best = []
         self.pre = None
         self.resent_result = None
@@ -40,7 +40,7 @@ class Slam(object):
         self.target = np.array([0,0])
         self.temptarget = np.array([0,0])
         self.trace = None
-        self.trace_flag = 0;
+        self.trace_flag = 0
         self.temp = None
         self.temp_pos = np.array([0,0])
 
@@ -101,7 +101,7 @@ class Slam(object):
             # result = img[min_row:max_row,min_col:max_col] 
             
             result = img
-            self.result = result;
+            self.result = result
             self.resent_result = result
             self.flag = 1
             self.pre = result.sum()
@@ -121,9 +121,9 @@ class Slam(object):
 
         self.pre = temp_sum
         best_vector = np.array([0,0])
-        best_px = 0;
-        best_py = 0;
-        match_value = 0;
+        best_px = 0
+        best_py = 0
+        match_value = 0
         len_vector = SEARCH_RANGE*SEARCH_RANGE*2
         
         for rx in range(-SEARCH_RANGE,SEARCH_RANGE+1):
@@ -150,16 +150,16 @@ class Slam(object):
                     match_value = temp_match_value
                     best_vector = v1
                     len_vector = rx*rx+ry*ry
-                    best_px = p_min_x;
-                    best_py = p_min_y;
+                    best_px = p_min_x
+                    best_py = p_min_y
                 else:
                     if temp_match_value == match_value:
                         temp_len_vector = rx*rx+ry*ry
                         if temp_len_vector < len_vector:
                             len_vector = temp_len_vector
                             best_vector = v1
-                            best_px = p_min_x;
-                            best_py = p_min_y;
+                            best_px = p_min_x
+                            best_py = p_min_y
 
         print("best_vector",best_vector,"best value",match_value/50)
         max_x = max(self.result.shape[0],best_vector[0]+img2.shape[0])
@@ -210,7 +210,7 @@ class Slam(object):
 frames = []  
 mySlam = Slam()
 result = None
-for x in range(70,88):
+for x in range(0,88):
     if x!=6:
         a = cv2.imread('1/'+str(x)+'.jpg',0)
         print(x)
