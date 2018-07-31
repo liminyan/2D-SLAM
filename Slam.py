@@ -14,8 +14,6 @@ MAX_MISS = 1.2
 PLANE_SIZE = 1
 MERGE_RAT = 0.6
 
-
-
 def point(event,x,y,flags,param):
     if event == cv2.EVENT_LBUTTONDOWN:
         print("fuck",x,y)
@@ -43,7 +41,7 @@ class Slam(object):
         self.trace_flag = 0
         self.temp = None
         self.temp_pos = np.array([0,0])
-
+        self.temp_new_img = None
 
     def show_plane_pos(self,pos_x,pos_y,r_x,r_y):
       
@@ -92,7 +90,7 @@ class Slam(object):
         return thresh1
 
     def no_T_Slam(self,img):
-        img = mySlam.clear_img(img)
+        img = self.clear_img(img)
         if self.flag == 0:
 
             # rows, cols = np.where(img[:,:] !=0)
@@ -164,13 +162,16 @@ class Slam(object):
         print("best_vector",best_vector,"best value",match_value/50)
         max_x = max(self.result.shape[0],best_vector[0]+img2.shape[0])
         max_y = max(self.result.shape[1],best_vector[1]+img2.shape[1]) 
-        temp_new_img = np.zeros([max_x,max_y]-np.array([best_px,best_py]))
+
+        del self.temp_new_img
+
+        self.temp_new_img = np.zeros([max_x,max_y]-np.array([best_px,best_py]))
                  
-        temp_new_img[0-best_px:self.result.shape[0]-best_px,0-best_py:self.result.shape[1]-best_py] = self.result
+        self.temp_new_img[0-best_px:self.result.shape[0]-best_px,0-best_py:self.result.shape[1]-best_py] = self.result
         for x in range(1,img2.shape[0]):
                 for y in range(1,img2.shape[1]):
                     if ( (img2[x][y]) != 0):
-                        temp_new_img[x+best_vector[0]-best_px][y+best_vector[1]-best_py] = 255
+                        self.temp_new_img[x+best_vector[0]-best_px][y+best_vector[1]-best_py] = 255
 
         #概率合并   
         lenx_pos = int(img2.shape[0]/2)
@@ -189,7 +190,7 @@ class Slam(object):
         if  (match_rate > 0.5 ) and (merge < MERGE_RAT):
             
             self.best.append(best_vector)
-            self.resent_result = temp_new_img
+            self.resent_result = self.temp_new_img
             self.V = best_vector 
             self.pos = np.array([best_px,best_py])
             self.temptarget =  self.target - self.pos
@@ -203,7 +204,7 @@ class Slam(object):
             self.target = self.temptarget 
             self.result = self.resent_result
             
-        return temp_new_img
+        return self.temp_new_img
 
 # demo --------
 
